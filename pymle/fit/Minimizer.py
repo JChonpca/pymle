@@ -49,7 +49,8 @@ class ScipyMinimizer(Minimizer):
     def __init__(self,
                  method: str = 'trust-constr',
                  tol: float = 5e-03,
-                 options: Optional[dict] = None):
+                 options: Optional[dict] = None,
+                 ):
         """
         Specific minimizer which simply wraps the scipy.optimize.minimize method for convenience
         For more details see:

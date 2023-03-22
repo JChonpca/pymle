@@ -61,13 +61,13 @@ class LikelihoodEstimator(Estimator):
         :param params0: array, the initial guess params
         :return: array, the estimated params
         """
-        print(f"Initial Params: {params0}")
-        print(f"Initial Likelihood: {-likelihood(params0)}")
+        # print(f"Initial Params: {params0}")
+        # print(f"Initial Likelihood: {-likelihood(params0)}")
 
         res = self._minimizer.minimize(function=likelihood, bounds=self._param_bounds, guess=params0)
         params = res.params
 
         final_like = -res.value
-        print(f"Final Params: {params}")
-        print(f"Final Likelihood: {final_like}")
+        # print(f"Final Params: {params}")
+        # print(f"Final Likelihood: {final_like}")
         return EstimatedResult(params=params, log_like=final_like, sample_size=len(self._sample) - 1)

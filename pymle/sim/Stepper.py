@@ -21,10 +21,19 @@ class Stepper(ABC):
 
     @abstractmethod
     def next(self,
-             t: float,
-             dt: float,
-             x: Union[float, np.ndarray],
-             dZ: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+              t: float,
+              dt: float,
+              x: Union[float, np.ndarray],
+              dZ: Union[float, np.ndarray],
+              dJ: Union[float, np.ndarray],) -> Union[float, np.ndarray]:
+
+    # @abstractmethod
+    # def next(self,
+    #          t: float,
+    #          dt: float,
+    #          x: Union[float, np.ndarray],
+    #          dZ: Union[float, np.ndarray],) -> Union[float, np.ndarray]:
+
         """
         Given the current state, and random variate(s), evolves state by one step over time increment dt
 
@@ -38,12 +47,22 @@ class Stepper(ABC):
         raise NotImplementedError
 
     def __call__(self,
-                 t: float,
-                 dt: float,
-                 x: Union[float, np.ndarray],
-                 dZ: Union[float, np.ndarray]) -> Union[float, np.ndarray]:
+                  t: float,
+                  dt: float,
+                  x: Union[float, np.ndarray],
+                  dZ: Union[float, np.ndarray],
+                  dJ: Union[float, np.ndarray],) -> Union[float, np.ndarray]:
+    # def __call__(self,
+    #              t: float,
+    #              dt: float,
+    #              x: Union[float, np.ndarray],
+    #              dZ: Union[float, np.ndarray],) -> Union[float, np.ndarray]:
+
+        
         """ Same as a call to next() """
-        return self.next(t=t, dt=dt, x=x, dZ=dZ)
+        return self.next(t=t, dt=dt, x=x, dZ=dZ, dJ = dJ)
+        
+        # return self.next(t=t, dt=dt, x=x, dZ=dZ)
 
     @staticmethod
     def new_stepper(scheme: str, model: Model1D):
@@ -62,6 +81,8 @@ class Stepper(ABC):
             return ExactStepper(model=model)
         elif scheme == "Milstein2":
             return Milstein2Stepper(model=model)
+        elif scheme == '1':
+            return JumpEulerStepper(model=model)
 
         raise NotImplementedError
 
@@ -185,4 +206,44 @@ class Milstein2Stepper(Stepper):
              + dt ** 1.5 * (0.5 * mu * sig_x + 0.5 * mu_x * sig + 0.25 * sig2 * sig_xx) * dZ \
              + dt ** 2 * (0.5 * mu * mu_x + 0.25 * mu_xx * sig2)
 
+        return np.maximum(0., xp) if self._model.is_positive else xp
+
+class JumpEulerStepper(Stepper):
+    def __init__(self, model: Model1D):
+        """
+        Euler Simulation Step
+        :param model: the SDE model
+        """
+        super().__init__(model=model)
+
+    def next(self,
+             t: float,
+             dt: float,
+             x: Union[float, np.ndarray],
+             dZ: Union[float, np.ndarray],
+             dJ: Union[float, np.ndarray],) -> Union[float, np.ndarray]:
+        """
+        Given the current state, and random variate(s), evolves state by one step over time increment dt
+
+        Note, this is the same as __call__, but with an interface that some people are more accustomed to
+        :param t: float, current time
+        :param dt: float, time increment (between now and next state transition)
+        :param x: float or np.ndarray, current state
+        :param dZ: float or np.ndarray, normal random variates, N(0,1), to evolve current state
+        :param dJ: float or np.ndarray, possion random variates, P(lambda), to jump current state
+        :return: next state, after evolving by one step
+        """
+        xp = x + self._model.drift(x, t) * dt \
+             + self._model.diffusion(x, t) * np.sqrt(dt) * dZ  
+        
+        M = np.zeros_like(dJ)
+        
+        for i in range(dJ.shape[0]):
+            
+            M[i] = np.sum(np.random.uniform(low = -self._model.jump(x, t), 
+                                            high = self._model.jump(x, t),
+                                            size = dJ[i]))
+        
+        xp = xp + M
+        
         return np.maximum(0., xp) if self._model.is_positive else xp

@@ -62,6 +62,33 @@ class Simulator1D(object):
             path[i + 1, :] = stepper(t=i * self._dt, dt=self._dt, x=path[i, :], dZ=norms[i, :])
         return path
 
+    def sim_jump_path(self, num_paths: int = 1) -> np.ndarray:
+        """
+        Simulate a new path(s) of size M + 1
+        :param num_paths: int, number of independent paths to simulate. By default, only
+            one path (column array) is returned. If num_paths > 1, each column is a path
+        :return: array, path(s) of process
+        """
+        # if self._sub_step > 1 and self._method != "Exact":
+            
+        #     return self._sim_substep(num_paths=num_paths)
+
+        stepper = Stepper.new_stepper(scheme=self._method, model=self._model)
+        
+        print(stepper)
+        
+        path = self._init_path(path_shape=(self._M + 1, num_paths))
+        
+        norms = np.random.normal(loc=0., scale=1., size=(self._M, num_paths))
+        
+        jumps = np.random.poisson(lam= self._model._params[2] * self._dt, size=(self._M, num_paths))
+        
+        for i in range(self._M):
+            
+            path[i + 1, :] = stepper(t=i * self._dt, dt=self._dt, x=path[i, :], dZ=norms[i, :], dJ=jumps[i, :])
+        
+        return path
+
     # ====================
     # PRIVATE
     # ====================
